@@ -27,19 +27,75 @@
         .header {
             background: white;
             border-radius: 15px;
-            padding: 20px;
+            padding: 25px;
             margin-bottom: 20px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .profile-section {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .profile-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+            border: 4px solid #1e3c72;
+            transition: transform 0.3s ease;
+        }
+
+        .profile-photo:hover {
+            transform: scale(1.05);
+        }
+
+        .profile-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .profile-photo:hover .photo-overlay {
+            opacity: 1;
+        }
+
+        .title-section {
+            flex: 1;
             text-align: center;
         }
 
-        .header h1 {
+        .title-section h1 {
             color: #1e3c72;
             margin-bottom: 10px;
             font-size: 2.5em;
         }
 
-        .header p {
+        .title-section p {
             color: #666;
             font-size: 1.1em;
         }
@@ -317,16 +373,37 @@
             .hole-input { width: 40px; }
             .hole-select { width: 50px; }
             .direction-select { width: 70px; font-size: 10px; }
+            
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+            
+            .title-section h1 {
+                font-size: 2em;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏌️‍♂️ Golf Stats Pro</h1>
-            <p>Dashboard de Estadísticas de Golf</p>
-            <div id="connection-status" class="connection-status status-connecting">
-                🔄 Inicializando aplicación...
+            <div class="header-content">
+                <div class="profile-section">
+                    <div class="profile-photo" onclick="cambiarFotoPerfil()">
+                        <img id="profile-img" src="https://via.placeholder.com/100x100/1e3c72/ffffff?text=⛳" alt="Foto de perfil">
+                        <div class="photo-overlay">📷</div>
+                    </div>
+                    <input type="file" id="profile-photo-input" accept="image/*" style="display: none;" onchange="actualizarFotoPerfil(this)">
+                </div>
+                <div class="title-section">
+                    <h1>🏌️‍♂️ Golf Stats de Ale</h1>
+                    <p>Dashboard Personal de Estadísticas de Golf</p>
+                    <div id="connection-status" class="connection-status status-connecting">
+                        🔄 Inicializando aplicación...
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -519,12 +596,15 @@
         }
 
         window.initializeApp = function() {
-            console.log('🚀 Iniciando Golf Stats Pro...');
+            console.log('🚀 Iniciando Golf Stats de Ale...');
             
             rondas = JSON.parse(localStorage.getItem('golfRondas')) || [];
             metas = JSON.parse(localStorage.getItem('golfMetas')) || {};
             
             document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
+            
+            // Cargar foto de perfil guardada
+            cargarFotoPerfil();
             
             generarTablaHoyos();
             actualizarEstadisticas();
@@ -553,12 +633,18 @@
                     const userData = userDoc.data();
                     const firebaseRondas = userData.rondas || [];
                     const firebaseMetas = userData.metas || {};
+                    const firebasePhoto = userData.profilePhoto || null;
                     
                     if (firebaseRondas.length > rondas.length) {
                         rondas = firebaseRondas;
                         metas = firebaseMetas;
                         localStorage.setItem('golfRondas', JSON.stringify(rondas));
                         localStorage.setItem('golfMetas', JSON.stringify(metas));
+                        
+                        if (firebasePhoto) {
+                            localStorage.setItem('profilePhoto', firebasePhoto);
+                            document.getElementById('profile-img').src = firebasePhoto;
+                        }
                         
                         actualizarEstadisticas();
                         mostrarHistorial();
@@ -569,6 +655,7 @@
                         await updateDoc(userDocRef, {
                             rondas: rondas,
                             metas: metas,
+                            profilePhoto: localStorage.getItem('profilePhoto'),
                             lastUpdated: new Date()
                         });
                         updateConnectionStatus('📤 Datos subidos', 'success');
@@ -577,10 +664,11 @@
                     }
                 } else {
                     await setDoc(userDocRef, {
-                        nombre: 'Jugador Golf',
+                        nombre: 'Ale',
                         createdAt: new Date(),
                         rondas: rondas,
                         metas: metas,
+                        profilePhoto: localStorage.getItem('profilePhoto'),
                         lastUpdated: new Date()
                     });
                     updateConnectionStatus('🆕 Perfil creado', 'success');
@@ -604,14 +692,16 @@
                     await updateDoc(userDocRef, {
                         rondas: rondas,
                         metas: metas,
+                        profilePhoto: localStorage.getItem('profilePhoto'),
                         lastUpdated: new Date()
                     });
                 } else {
                     await setDoc(userDocRef, {
-                        nombre: 'Jugador Golf',
+                        nombre: 'Ale',
                         createdAt: new Date(),
                         rondas: rondas,
                         metas: metas,
+                        profilePhoto: localStorage.getItem('profilePhoto'),
                         lastUpdated: new Date()
                     });
                 }
@@ -631,6 +721,9 @@
             
             document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
             
+            // Cargar foto de perfil guardada
+            cargarFotoPerfil();
+            
             generarTablaHoyos();
             actualizarEstadisticas();
             mostrarHistorial();
@@ -642,6 +735,36 @@
                 updateConnectionStatus('📱 Modo local', 'error');
             }
         });
+
+        function cambiarFotoPerfil() {
+            document.getElementById('profile-photo-input').click();
+        }
+
+        function actualizarFotoPerfil(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const profileImg = document.getElementById('profile-img');
+                    profileImg.src = e.target.result;
+                    
+                    // Guardar la foto en localStorage
+                    localStorage.setItem('profilePhoto', e.target.result);
+                    
+                    // Guardar también en Firebase si está conectado
+                    if (window.firebaseReady) {
+                        saveToFirebase();
+                    }
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function cargarFotoPerfil() {
+            const savedPhoto = localStorage.getItem('profilePhoto');
+            if (savedPhoto) {
+                document.getElementById('profile-img').src = savedPhoto;
+            }
+        }
 
         function switchTab(tabName, tabElement) {
             document.querySelectorAll('.content').forEach(content => {
